@@ -1,25 +1,30 @@
 import os
+import datetime
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import (ApplicationBuilder, ContextTypes, MessageHandler,
                           ChatMemberHandler, filters)
-import datetime
 
+# Variáveis de ambiente
 TOKEN = os.getenv("TELEGRAM_TOKEN")
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET",
-                           "corvinbotsecret")  # segurança opcional
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "corvinbotsecret")
+PORT = int(os.environ.get("PORT", 5000))  # necessário para o Render
 
+# Configurações
 PALAVRAS_CRIMINOSAS = [
     'cp', 'zoofilia', 'gore', 'snuff', 'terrorismo', 'porn infantil'
 ]
-
 HORARIO_SILENCIO = (23, 7)
 MENSAGEM_BOAS_VINDAS = "👋 Olá, seja bem-vinde ao grupo! Por favor, leia as regras fixadas. Respeito é fundamental."
 
+# Flask app
 app = Flask(__name__)
+
+# Telegram Application
 telegram_app = ApplicationBuilder().token(TOKEN).build()
 
 
+# --- WEBHOOK ENDPOINT ---
 @app.post(f"/{WEBHOOK_SECRET}")
 async def webhook() -> str:
     update = Update.de_json(request.get_json(force=True), telegram_app.bot)
@@ -70,3 +75,20 @@ telegram_app.add_handler(
     MessageHandler(filters.TEXT & (~filters.COMMAND), filtrar_conteudo))
 telegram_app.add_handler(
     ChatMemberHandler(boas_vindas, ChatMemberHandler.CHAT_MEMBER))
+
+# --- INICIALIZA O FLASK E O TELEGRAM APP ---
+if __name__ == "__main__":
+    import asyncio
+
+    # Inicializa o Telegram bot de forma assíncrona
+    async def run():
+        await telegram_app.initialize()
+        await telegram_app.start()
+        await telegram_app.updater.start_polling(
+        )  # Necessário para processar atualizações
+        print("Bot Telegram pronto!")
+
+    asyncio.run(run())
+
+    # Inicia o servidor Flask
+    app.run(host="0.0.0.0", port=PORT)
