@@ -1,18 +1,10 @@
 from telegram import Update, ChatPermissions
-from telegram.ext import (
-    ApplicationBuilder,
-    MessageHandler,
-    CommandHandler,
-    filters,
-    ContextTypes,
-    ChatMemberHandler
-)
+from telegram.ext import (ApplicationBuilder, MessageHandler, CommandHandler,
+                          filters, ContextTypes, ChatMemberHandler)
 import datetime
 import os
-from dotenv import load_dotenv
 
-# 🔐 Carrega variáveis do .env
-load_dotenv()
+# 🔐 Pega o token diretamente das variáveis de ambiente do Render
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 # Palavras proibidas
