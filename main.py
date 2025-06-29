@@ -33,8 +33,6 @@ async def webhook() -> str:
 
 
 # --- HANDLERS DO BOT ---
-
-
 async def bloquear_horario(update: Update, context: ContextTypes.DEFAULT_TYPE):
     agora = datetime.datetime.now().time()
     hora = agora.hour
@@ -72,7 +70,7 @@ async def boas_vindas(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Adiciona handlers
 telegram_app.add_handler(MessageHandler(filters.ALL, bloquear_horario))
 telegram_app.add_handler(
-    MessageHandler(filters.TEXT & (~filters.COMMAND), filtrar_conteudo))
+    MessageHandler(filters.TEXT & ~filters.COMMAND, filtrar_conteudo))
 telegram_app.add_handler(
     ChatMemberHandler(boas_vindas, ChatMemberHandler.CHAT_MEMBER))
 
@@ -80,15 +78,10 @@ telegram_app.add_handler(
 if __name__ == "__main__":
     import asyncio
 
-    # Inicializa o Telegram bot de forma assíncrona
-    async def run():
+    async def main():
         await telegram_app.initialize()
         await telegram_app.start()
-        await telegram_app.updater.start_polling(
-        )  # Necessário para processar atualizações
-        print("Bot Telegram pronto!")
+        print("🤖 Bot Telegram iniciado com Webhook!")
 
-    asyncio.run(run())
-
-    # Inicia o servidor Flask
+    asyncio.run(main())
     app.run(host="0.0.0.0", port=PORT)
