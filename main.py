@@ -1,17 +1,33 @@
 from telegram import Update, ChatPermissions
-from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters, ContextTypes, ChatMemberHandler
+from telegram.ext import (
+    ApplicationBuilder,
+    MessageHandler,
+    CommandHandler,
+    filters,
+    ContextTypes,
+    ChatMemberHandler
+)
 import datetime
+import os
+from dotenv import load_dotenv
 
-# ⛔ Substitua pelo token do seu bot (pegue no BotFather)
-TOKEN = '8066374638:AAE7DpwPCrlLfCg0YL9AdGmA0DGmVydskfo'
+# 🔐 Carrega variáveis do .env
+load_dotenv()
+TOKEN = os.getenv("TELEGRAM_TOKEN")
 
+# Palavras proibidas
 PALAVRAS_CRIMINOSAS = [
     'cp', 'zoofilia', 'gore', 'snuff', 'terrorismo', 'porn infantil'
 ]
+
+# Horário de silêncio
 HORARIO_SILENCIO = (23, 7)
+
+# Mensagem de boas-vindas
 MENSAGEM_BOAS_VINDAS = "👋 Olá, seja bem-vinde ao grupo! Por favor, leia as regras fixadas. Respeito é fundamental."
 
 
+# Bloqueia mensagens fora do horário permitido
 async def bloquear_horario(update: Update, context: ContextTypes.DEFAULT_TYPE):
     agora = datetime.datetime.now().time()
     hora = agora.hour
@@ -23,6 +39,7 @@ async def bloquear_horario(update: Update, context: ContextTypes.DEFAULT_TYPE):
             quote=True)
 
 
+# Filtra conteúdo criminoso e arquivos
 async def filtrar_conteudo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.text:
         texto = update.message.text.lower()
@@ -41,16 +58,19 @@ async def filtrar_conteudo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "📵 Arquivos/imagens não são permitidos. Contato com a moderação.")
 
 
+# Envia mensagem de boas-vindas
 async def boas_vindas(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for membro in update.chat_member.new_chat_members:
         await context.bot.send_message(chat_id=update.chat.id,
                                        text=MENSAGEM_BOAS_VINDAS)
 
 
+# Inicia o bot
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(MessageHandler(filters.ALL, bloquear_horario))
 app.add_handler(
     MessageHandler(filters.TEXT & (~filters.COMMAND), filtrar_conteudo))
 app.add_handler(ChatMemberHandler(boas_vindas, ChatMemberHandler.CHAT_MEMBER))
+
 print("🤖 Bot Corvin Guard rodando...")
 app.run_polling()
