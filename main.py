@@ -22,8 +22,8 @@ MENSAGEM_BOAS_VINDAS = "👋 Olá, seja bem-vinde ao grupo! Por favor, leia as r
 
 # Frases proibidas para troca de vídeos/fotos (normalizadas)
 PALAVRAS_PROIBIDAS_TROCA_VIDEOS = [
-    "trocar video", "troca video", "manda video", "me manda video",
-    "me envie video", "video privado", "trocar conteudo"
+    "trocar video", "troca video", "manda video", "me manda video", "troco video", "troco", "trade", "tr4de"
+    "me envie video", "video privado", "trocar conteudo", "perv", "vrep", "p3rv", "trad3", "cp", "pc"
 ]
 
 # Flask app
@@ -32,12 +32,10 @@ app = Flask(__name__)
 # Telegram Application
 telegram_app = ApplicationBuilder().token(TOKEN).build()
 
-
 # Rota raiz só para teste (evita 404)
 @app.route("/")
 def index():
     return "Bot ativo!"
-
 
 # --- Função para normalizar texto ---
 def normalizar_texto(texto: str) -> str:
@@ -57,14 +55,14 @@ def normalizar_texto(texto: str) -> str:
     texto = re.sub(r'\s+', ' ', texto).strip()  # Remove espaços extras
     return texto
 
-
 # --- WEBHOOK ENDPOINT ---
 @app.post(f"/{WEBHOOK_SECRET}")
 async def webhook() -> str:
-    update = Update.de_json(request.get_json(force=True), telegram_app.bot)
+    payload = request.get_json(force=True)
+    print("[DEBUG] Payload recebido do Telegram:", payload)  # <-- adicionado
+    update = Update.de_json(payload, telegram_app.bot)
     await telegram_app.process_update(update)
     return "ok"
-
 
 # --- HANDLERS DO BOT ---
 async def bloquear_horario(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -77,7 +75,6 @@ async def bloquear_horario(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⏰ O grupo está silenciado neste horário. Tente novamente mais tarde.",
             quote=True)
 
-
 async def filtrar_conteudo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.text:
         texto = update.message.text.lower()
@@ -89,12 +86,6 @@ async def filtrar_conteudo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.ban_chat_member(update.effective_chat.id,
                                                   update.effective_user.id)
                 return
-    # Permitindo envio de imagens e documentos, não bloqueia nem deleta mensagens com eles
-    # if update.message.photo or update.message.document:
-    #     await update.message.delete()
-    #     await update.message.reply_text(
-    #         "📵 Arquivos/imagens não são permitidos. Contato com a moderação.")
-
 
 async def banir_pedidos_troca_videos(update: Update,
                                      context: ContextTypes.DEFAULT_TYPE):
@@ -110,18 +101,18 @@ async def banir_pedidos_troca_videos(update: Update,
                                                   update.effective_user.id)
                 return
 
-
 async def boas_vindas(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    old_status = update.chat_member.old_chat_member.status
-    new_status = update.chat_member.new_chat_member.status
-    # DEBUG
-    print(
-        f"[DEBUG] ChatMember update: old_status={old_status}, new_status={new_status}"
-    )
-    if old_status in ['left', 'kicked'] and new_status == 'member':
-        await context.bot.send_message(chat_id=update.chat_member.chat.id,
-                                       text=MENSAGEM_BOAS_VINDAS)
-
+    try:
+        old_status = update.chat_member.old_chat_member.status
+        new_status = update.chat_member.new_chat_member.status
+        print(f"[DEBUG] ChatMember update: old_status={old_status}, new_status={new_status}")
+        if old_status in ['left', 'kicked'] and new_status == 'member':
+            nome = update.chat_member.new_chat_member.user.first_name
+            await context.bot.send_message(
+                chat_id=update.chat_member.chat.id,
+                text=f"👋 Olá, {nome}! {MENSAGEM_BOAS_VINDAS}")
+    except Exception as e:
+        print(f"[ERRO no boas_vindas] {e}")
 
 # Adiciona handlers
 telegram_app.add_handler(MessageHandler(filters.ALL, bloquear_horario))
@@ -133,7 +124,6 @@ telegram_app.add_handler(
 telegram_app.add_handler(
     ChatMemberHandler(boas_vindas, ChatMemberHandler.CHAT_MEMBER))
 
-
 # --- INICIALIZA O BOT EM BACKGROUND ---
 def start_bot():
     import asyncio
@@ -144,7 +134,6 @@ def start_bot():
         print("🤖 Bot Telegram iniciado com Webhook!")
 
     asyncio.run(runner())
-
 
 if __name__ == "__main__":
     threading.Thread(target=start_bot).start()
