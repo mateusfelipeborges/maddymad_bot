@@ -111,9 +111,10 @@ async def banir_pedidos_troca_videos(update: Update,
 
 
 async def boas_vindas(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.new_chat_members:
-        for membro in update.message.new_chat_members:
-            await update.message.reply_text(MENSAGEM_BOAS_VINDAS)
+    novo_membro = update.chat_member.new_chat_member
+    if novo_membro.status == "member":
+        await context.bot.send_message(chat_id=update.chat_member.chat.id,
+                                       text=MENSAGEM_BOAS_VINDAS)
 
 
 # Adiciona handlers
@@ -124,7 +125,7 @@ telegram_app.add_handler(
     MessageHandler(filters.TEXT & ~filters.COMMAND,
                    banir_pedidos_troca_videos))
 telegram_app.add_handler(
-    MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, boas_vindas))
+    ChatMemberHandler(boas_vindas, ChatMemberHandler.CHAT_MEMBER))
 
 
 # --- INICIALIZA O BOT EM BACKGROUND ---
