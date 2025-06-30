@@ -6,6 +6,7 @@ from flask import Flask, request
 from telegram import Update
 from telegram.ext import (ApplicationBuilder, ContextTypes, MessageHandler,
                           ChatMemberHandler, filters)
+from telegram.request import HTTPXRequest
 
 # Variáveis de ambiente
 TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -20,17 +21,24 @@ PALAVRAS_CRIMINOSAS = [
 HORARIO_SILENCIO = (23, 7)
 MENSAGEM_BOAS_VINDAS = "👋 Olá, seja bem-vinde ao grupo! Por favor, leia as regras fixadas. Respeito é fundamental. PROIBIDO conteúdo de CP, zoofilia, gore, snuff, terrorismo e porn infantil. BANIMENTO IMEDIATO "
 
-# Frases proibidas para troca de vídeos/fotos (normalizadas)
 PALAVRAS_PROIBIDAS_TROCA_VIDEOS = [
     "trocar video", "troca video", "manda video", "me manda video",
     "me envie video", "video privado", "trocar conteudo"
 ]
 
-# Flask app
 app = Flask(__name__)
 
-# Telegram Application
-telegram_app = ApplicationBuilder().token(TOKEN).build()
+# Opcional: configurar request com timeout customizado
+# request = HTTPXRequest(connect_timeout=10, read_timeout=20)
+
+# Limita a 5 atualizações concorrentes para evitar PoolTimeout
+telegram_app = (
+    ApplicationBuilder()
+    .token(TOKEN)
+    # .request(request)  # Descomente para ativar timeout customizado
+    .concurrent_updates(5)
+    .build()
+)
 
 @app.route("/")
 def index():
@@ -61,13 +69,15 @@ async def webhook() -> str:
     await telegram_app.process_update(update)
     return "ok"
 
-# 🛠 AJUSTADO AQUI:
 async def bloquear_horario(update: Update, context: ContextTypes.DEFAULT_TYPE):
     agora = datetime.datetime.now().time()
     hora = agora.hour
     inicio, fim = HORARIO_SILENCIO
     if inicio <= hora or hora < fim:
-        await update.message.delete()
+        try:
+            await update.message.delete()
+        except Exception as e:
+            print(f"[WARNING] Falha ao deletar mensagem: {e}")
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text="⏰ O grupo está silenciado neste horário. Tente novamente mais tarde."
@@ -134,3 +144,4 @@ def start_bot():
 if __name__ == "__main__":
     threading.Thread(target=start_bot).start()
     app.run(host="0.0.0.0", port=PORT)
+
