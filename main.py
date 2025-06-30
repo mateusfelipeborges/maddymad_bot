@@ -2,6 +2,7 @@ import os
 import datetime
 import threading
 import re
+import asyncio  # <- adicionado para permitir sleep e delete
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import (
@@ -31,7 +32,7 @@ PALAVRAS_CRIMINOSAS = [
 HORARIO_SILENCIO = (23, 7)
 MENSAGEM_BOAS_VINDAS = (
     "👋 Olá, seja bem-vinde ao grupo! Por favor, leia as regras fixadas. Respeito é fundamental. "
-    "PROIBIDO conteúdo de CP, zoofilia, gore, snuff, terrorismo e porn infantil. BANIMENTO IMEDIATO "
+    "PROIBIDO conteúdo de CP, zoofilia, gore, snuff, terrorismo e porn infantil. BANIMENTO IMEDIATO! "
 )
 
 PALAVRAS_PROIBIDAS_TROCA_VIDEOS = [
@@ -46,14 +47,9 @@ PALAVRAS_PROIBIDAS_TROCA_VIDEOS = [
 
 app = Flask(__name__)
 
-# Opcional: configurar request com timeout customizado
-# request = HTTPXRequest(connect_timeout=10, read_timeout=20)
-
-# Limita a 5 atualizações concorrentes para evitar PoolTimeout
 telegram_app = (
     ApplicationBuilder()
     .token(TOKEN)
-    # .request(request)  # Descomente para ativar timeout customizado
     .concurrent_updates(5)
     .build()
 )
@@ -142,10 +138,15 @@ async def boas_vindas(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"[DEBUG] ChatMember update: old_status={old_status}, new_status={new_status}")
         if old_status in ["left", "kicked"] and new_status == "member":
             nome = update.chat_member.new_chat_member.user.first_name
-            await context.bot.send_message(
+            msg = await context.bot.send_message(
                 chat_id=update.chat_member.chat.id,
                 text=f"👋 Olá, {nome}! {MENSAGEM_BOAS_VINDAS}",
             )
+            await asyncio.sleep(10)
+            try:
+                await context.bot.delete_message(chat_id=msg.chat_id, message_id=msg.message_id)
+            except Exception as e:
+                print(f"[ERRO] Falha ao apagar mensagem de boas-vindas: {e}")
     except Exception as e:
         print(f"[ERRO no boas_vindas] {e}")
 
@@ -154,42 +155,14 @@ async def boas_vindas_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     if update.message and update.message.new_chat_members:
         for membro in update.message.new_chat_members:
             nome = membro.first_name or "novo membro"
-            await context.bot.send_message(
+            msg = await context.bot.send_message(
                 chat_id=update.effective_chat.id,
                 text=f"👋 Olá, {nome}! {MENSAGEM_BOAS_VINDAS}",
             )
-
-# Handler simples para testar se o bot está respondendo
-async def responder_ola(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(f"[DEBUG] Mensagem recebida para responder_ola: {update.message.text}")
-    await update.message.reply_text("Olá! Recebi sua mensagem.")
-
-# Comentado para tirar o bloqueio de horário temporariamente
-# telegram_app.add_handler(MessageHandler(filters.ALL, bloquear_horario))
-
-telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, filtrar_conteudo))
-telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, banir_pedidos_troca_videos))
-telegram_app.add_handler(ChatMemberHandler(boas_vindas, ChatMemberHandler.CHAT_MEMBER))
-
-# Novo handler para boas-vindas via mensagem com novos membros
-telegram_app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, boas_vindas_message))
-
-# Handler de teste para responder qualquer texto
-telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, responder_ola))
-
-def start_bot():
-    import asyncio
-
-    async def runner():
-        await telegram_app.initialize()
-        await telegram_app.start()
-        print("🤖 Bot Telegram iniciado com Webhook!")
-
-    asyncio.run(runner())
-
-
-if __name__ == "__main__":
-    threading.Thread(target=start_bot).start()
-    app.run(host="0.0.0.0", port=PORT)
+            await asyncio.sleep(10)
+            try:
+                await context.bot.delete_message(chat_id=msg.chat_id, message_id=msg.message_id)
+            except Exception as e:
+                print(f"[ERRO] Falha ao apagar mensagem de boas-vindas: {e
 
 
