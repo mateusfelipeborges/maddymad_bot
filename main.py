@@ -15,6 +15,10 @@ from telegram.ext import (
 )
 from telegram.request import HTTPXRequest
 
+# ✅ Carregar variáveis do arquivo .env
+from dotenv import load_dotenv
+load_dotenv()
+
 # Variáveis de ambiente
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 print(f"[DEBUG] TOKEN carregado: {repr(TOKEN)}")
