@@ -107,12 +107,17 @@ async def filtrar_conteudo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if palavra in texto:
                 print(f"[ALERTA] Palavra proibida detectada: {palavra}")
                 await update.message.delete()
-                await update.message.reply_text(
+                msg = await update.message.reply_text(
                     "🚫 Conteúdo proibido. Usuário será removido."
                 )
                 await context.bot.ban_chat_member(
                     update.effective_chat.id, update.effective_user.id
                 )
+                await asyncio.sleep(10)
+                try:
+                    await context.bot.delete_message(chat_id=msg.chat_id, message_id=msg.message_id)
+                except Exception as e:
+                    print(f"[ERRO] Falha ao apagar mensagem de banimento: {e}")
                 return
 
 async def banir_pedidos_troca_videos(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -123,12 +128,17 @@ async def banir_pedidos_troca_videos(update: Update, context: ContextTypes.DEFAU
             if frase in texto:
                 print(f"[ALERTA] Pedido de troca de vídeo detectado: {frase}")
                 await update.message.delete()
-                await update.message.reply_text(
+                msg = await update.message.reply_text(
                     "🚫 Pedido de troca de vídeos/fotos não é permitido. Você será removido do grupo."
                 )
                 await context.bot.ban_chat_member(
                     update.effective_chat.id, update.effective_user.id
                 )
+                await asyncio.sleep(10)
+                try:
+                    await context.bot.delete_message(chat_id=msg.chat_id, message_id=msg.message_id)
+                except Exception as e:
+                    print(f"[ERRO] Falha ao apagar mensagem de banimento: {e}")
                 return
 
 async def boas_vindas(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -150,7 +160,6 @@ async def boas_vindas(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print(f"[ERRO no boas_vindas] {e}")
 
-# NOVO: boas-vindas para mensagens com novos membros
 async def boas_vindas_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message and update.message.new_chat_members:
         for membro in update.message.new_chat_members:
@@ -163,6 +172,21 @@ async def boas_vindas_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             try:
                 await context.bot.delete_message(chat_id=msg.chat_id, message_id=msg.message_id)
             except Exception as e:
-                print(f"[ERRO] Falha ao apagar mensagem de boas-vindas: {e
+                print(f"[ERRO] Falha ao apagar mensagem de boas-vindas: {e}")
 
+# Handlers
+telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, filtrar_conteudo))
+telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, banir_pedidos_troca_videos))
+telegram_app.add_handler(ChatMemberHandler(boas_vindas, ChatMemberHandler.CHAT_MEMBER))
+telegram_app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, boas_vindas_message))
 
+def start_bot():
+    async def runner():
+        await telegram_app.initialize()
+        await telegram_app.start()
+        print("🤖 Bot Telegram iniciado com Webhook!")
+    asyncio.run(runner())
+
+if __name__ == "__main__":
+    threading.Thread(target=start_bot).start()
+    app.run(host="0.0.0.0", port=PORT)
