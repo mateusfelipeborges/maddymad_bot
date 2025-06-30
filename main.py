@@ -37,13 +37,13 @@ PALAVRAS_PROIBIDAS_TROCA_VIDEOS = [
 
 app = Flask(__name__)
 
-# 🔧 CORREÇÃO AQUI: criação do request sem client=
-request = HTTPXRequest()
+# ✅ Correção aqui: renomeando para não sobrescrever o `request` do Flask
+telegram_request = HTTPXRequest()
 
 telegram_app = (
     ApplicationBuilder()
     .token(TOKEN)
-    .request(request)
+    .request(telegram_request)
     .concurrent_updates(10)
     .build()
 )
@@ -63,7 +63,7 @@ def normalizar_texto(texto: str) -> str:
 
 @app.post(f"/{WEBHOOK_SECRET}")
 async def webhook() -> str:
-    payload = request.get_json()
+    payload = request.get_json()  # <-- agora funciona corretamente
     print("[DEBUG] Payload recebido do Telegram:", payload)
     update = Update.de_json(payload, telegram_app.bot)
     await telegram_app.process_update(update)
