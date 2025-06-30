@@ -131,7 +131,7 @@ async def boas_vindas(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 chat_id=update.chat_member.chat.id,
                 text=f"👋 Olá, {nome}! {MENSAGEM_BOAS_VINDAS}"
             )
-            asyncio.create_task(apagar_mensagem_apos_delay(context, msg.chat_id, msg.message_id))
+            asyncio.create_task(apagar_mensagem_apos_delay(context, msg.chat_id, msg.message_id, delay=5))
     except Exception as e:
         print(f"[ERRO no boas_vindas] {e}")
 
@@ -143,7 +143,7 @@ async def boas_vindas_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                 chat_id=update.effective_chat.id,
                 text=f"👋 Olá, {nome}! {MENSAGEM_BOAS_VINDAS}"
             )
-            asyncio.create_task(apagar_mensagem_apos_delay(context, msg.chat_id, msg.message_id))
+            asyncio.create_task(apagar_mensagem_apos_delay(context, msg.chat_id, msg.message_id, delay=5))
 
 telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, filtrar_conteudo))
 telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, banir_pedidos_troca_videos))
