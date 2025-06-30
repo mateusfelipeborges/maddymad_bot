@@ -2,7 +2,6 @@ import os
 import datetime
 import threading
 import re
-import asyncio
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import (ApplicationBuilder, ContextTypes, MessageHandler,
@@ -60,11 +59,10 @@ def normalizar_texto(texto: str) -> str:
 
 
 # --- WEBHOOK ENDPOINT ---
-@app.route(f"/{WEBHOOK_SECRET}", methods=["POST"])
-def webhook():
-    json_data = request.get_json(force=True)
-    update = Update.de_json(json_data, telegram_app.bot)
-    asyncio.run(telegram_app.process_update(update))
+@app.post(f"/{WEBHOOK_SECRET}")
+async def webhook() -> str:
+    update = Update.de_json(request.get_json(force=True), telegram_app.bot)
+    await telegram_app.process_update(update)
     return "ok"
 
 
@@ -91,10 +89,11 @@ async def filtrar_conteudo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.ban_chat_member(update.effective_chat.id,
                                                   update.effective_user.id)
                 return
-    if update.message.photo or update.message.document:
-        await update.message.delete()
-        await update.message.reply_text(
-            "📵 Arquivos/imagens não são permitidos. Contato com a moderação.")
+    # Permitindo envio de imagens e documentos, não bloqueia nem deleta mensagens com eles
+    # if update.message.photo or update.message.document:
+    #     await update.message.delete()
+    #     await update.message.reply_text(
+    #         "📵 Arquivos/imagens não são permitidos. Contato com a moderação.")
 
 
 async def banir_pedidos_troca_videos(update: Update,
