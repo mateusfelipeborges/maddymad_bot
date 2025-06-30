@@ -16,7 +16,7 @@ PALAVRAS_CRIMINOSAS = [
     'cp', 'zoofilia', 'gore', 'snuff', 'terrorismo', 'porn infantil'
 ]
 HORARIO_SILENCIO = (23, 7)
-MENSAGEM_BOAS_VINDAS = "👋 Olá, seja bem-vinde ao grupo! Por favor, leia as regras fixadas. Respeito é fundamental."
+MENSAGEM_BOAS_VINDAS = "👋 Olá, seja bem-vinde ao grupo! Por favor, leia as regras fixadas. Respeito é fundamental. PROIBIDO conteúdo de CP, zoofilia, gore, snuff, terrorismo e porn infantil. BANIMENTO IMEDIATO "
 
 # Flask app
 app = Flask(__name__)
