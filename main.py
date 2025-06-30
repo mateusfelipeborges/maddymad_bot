@@ -122,7 +122,7 @@ async def boas_vindas(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print(f"[ERRO no boas_vindas] {e}")
 
-telegram_app.add_handler(MessageHandler(filters.ALL, bloquear_horario))
+#telegram_app.add_handler(MessageHandler(filters.ALL, bloquear_horario))
 telegram_app.add_handler(
     MessageHandler(filters.TEXT & ~filters.COMMAND, filtrar_conteudo))
 telegram_app.add_handler(
