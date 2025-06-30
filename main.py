@@ -2,6 +2,7 @@ import os
 import datetime
 import threading
 import re
+import asyncio
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import (ApplicationBuilder, ContextTypes, MessageHandler,
@@ -59,10 +60,11 @@ def normalizar_texto(texto: str) -> str:
 
 
 # --- WEBHOOK ENDPOINT ---
-@app.post(f"/{WEBHOOK_SECRET}")
-async def webhook() -> str:
-    update = Update.de_json(request.get_json(force=True), telegram_app.bot)
-    await telegram_app.process_update(update)
+@app.route(f"/{WEBHOOK_SECRET}", methods=["POST"])
+def webhook():
+    json_data = request.get_json(force=True)
+    update = Update.de_json(json_data, telegram_app.bot)
+    asyncio.run(telegram_app.process_update(update))
     return "ok"
 
 
