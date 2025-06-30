@@ -1,5 +1,6 @@
 import os
 import datetime
+import threading
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import (ApplicationBuilder, ContextTypes, MessageHandler,
@@ -74,14 +75,19 @@ telegram_app.add_handler(
 telegram_app.add_handler(
     ChatMemberHandler(boas_vindas, ChatMemberHandler.CHAT_MEMBER))
 
-# --- INICIALIZA O FLASK E O TELEGRAM APP ---
-if __name__ == "__main__":
+
+# --- INICIALIZA O BOT EM BACKGROUND ---
+def start_bot():
     import asyncio
 
-    async def main():
+    async def runner():
         await telegram_app.initialize()
         await telegram_app.start()
         print("🤖 Bot Telegram iniciado com Webhook!")
 
-    asyncio.run(main())
+    asyncio.run(runner())
+
+
+if __name__ == "__main__":
+    threading.Thread(target=start_bot).start()
     app.run(host="0.0.0.0", port=PORT)
