@@ -69,9 +69,9 @@ async def filtrar_conteudo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def boas_vindas(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    for membro in update.chat_member.new_chat_members:
-        await context.bot.send_message(chat_id=update.chat.id,
-                                       text=MENSAGEM_BOAS_VINDAS)
+    if update.message.new_chat_members:
+        for membro in update.message.new_chat_members:
+            await update.message.reply_text(MENSAGEM_BOAS_VINDAS)
 
 
 # Adiciona handlers
@@ -79,7 +79,7 @@ telegram_app.add_handler(MessageHandler(filters.ALL, bloquear_horario))
 telegram_app.add_handler(
     MessageHandler(filters.TEXT & ~filters.COMMAND, filtrar_conteudo))
 telegram_app.add_handler(
-    ChatMemberHandler(boas_vindas, ChatMemberHandler.CHAT_MEMBER))
+    MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, boas_vindas))
 
 
 # --- INICIALIZA O BOT EM BACKGROUND ---
