@@ -9,7 +9,7 @@ from telegram.ext import (ApplicationBuilder, ContextTypes, MessageHandler,
 
 # Variáveis de ambiente
 TOKEN = os.getenv("TELEGRAM_TOKEN")
-print(f"[DEBUG] TOKEN carregado: {repr(TOKEN)}")  # <-- linha adicionada para debug
+print(f"[DEBUG] TOKEN carregado: {repr(TOKEN)}")
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "corvinbotsecret")
 PORT = int(os.environ.get("PORT", 10000))  # Porta padrão do Render é 10000
 
@@ -22,8 +22,8 @@ MENSAGEM_BOAS_VINDAS = "👋 Olá, seja bem-vinde ao grupo! Por favor, leia as r
 
 # Frases proibidas para troca de vídeos/fotos (normalizadas)
 PALAVRAS_PROIBIDAS_TROCA_VIDEOS = [
-    "trocar video", "troca video", "manda video", "me manda video", "troco video", "troco", "trade", "tr4de"
-    "me envie video", "video privado", "trocar conteudo", "perv", "vrep", "p3rv", "trad3", "cp", "pc"
+    "trocar video", "troca video", "manda video", "me manda video",
+    "me envie video", "video privado", "trocar conteudo"
 ]
 
 # Flask app
@@ -32,12 +32,10 @@ app = Flask(__name__)
 # Telegram Application
 telegram_app = ApplicationBuilder().token(TOKEN).build()
 
-# Rota raiz só para teste (evita 404)
 @app.route("/")
 def index():
     return "Bot ativo!"
 
-# --- Função para normalizar texto ---
 def normalizar_texto(texto: str) -> str:
     texto = texto.lower()
     substituicoes = {
@@ -51,29 +49,29 @@ def normalizar_texto(texto: str) -> str:
     }
     for numero, letra in substituicoes.items():
         texto = texto.replace(numero, letra)
-    texto = re.sub(r'[^a-z0-9\s]', '', texto)  # Remove caracteres especiais
-    texto = re.sub(r'\s+', ' ', texto).strip()  # Remove espaços extras
+    texto = re.sub(r'[^a-z0-9\s]', '', texto)
+    texto = re.sub(r'\s+', ' ', texto).strip()
     return texto
 
-# --- WEBHOOK ENDPOINT ---
 @app.post(f"/{WEBHOOK_SECRET}")
 async def webhook() -> str:
     payload = request.get_json(force=True)
-    print("[DEBUG] Payload recebido do Telegram:", payload)  # <-- adicionado
+    print("[DEBUG] Payload recebido do Telegram:", payload)
     update = Update.de_json(payload, telegram_app.bot)
     await telegram_app.process_update(update)
     return "ok"
 
-# --- HANDLERS DO BOT ---
+# 🛠 AJUSTADO AQUI:
 async def bloquear_horario(update: Update, context: ContextTypes.DEFAULT_TYPE):
     agora = datetime.datetime.now().time()
     hora = agora.hour
     inicio, fim = HORARIO_SILENCIO
     if inicio <= hora or hora < fim:
         await update.message.delete()
-        await update.message.reply_text(
-            "⏰ O grupo está silenciado neste horário. Tente novamente mais tarde.",
-            quote=True)
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="⏰ O grupo está silenciado neste horário. Tente novamente mais tarde."
+        )
 
 async def filtrar_conteudo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.text:
@@ -114,7 +112,6 @@ async def boas_vindas(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print(f"[ERRO no boas_vindas] {e}")
 
-# Adiciona handlers
 telegram_app.add_handler(MessageHandler(filters.ALL, bloquear_horario))
 telegram_app.add_handler(
     MessageHandler(filters.TEXT & ~filters.COMMAND, filtrar_conteudo))
@@ -124,7 +121,6 @@ telegram_app.add_handler(
 telegram_app.add_handler(
     ChatMemberHandler(boas_vindas, ChatMemberHandler.CHAT_MEMBER))
 
-# --- INICIALIZA O BOT EM BACKGROUND ---
 def start_bot():
     import asyncio
 
