@@ -1,6 +1,7 @@
 import os
 import datetime
 import threading
+import re
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import (ApplicationBuilder, ContextTypes, MessageHandler,
@@ -18,6 +19,13 @@ PALAVRAS_CRIMINOSAS = [
 HORARIO_SILENCIO = (23, 7)
 MENSAGEM_BOAS_VINDAS = "👋 Olá, seja bem-vinde ao grupo! Por favor, leia as regras fixadas. Respeito é fundamental. PROIBIDO conteúdo de CP, zoofilia, gore, snuff, terrorismo e porn infantil. BANIMENTO IMEDIATO "
 
+# Frases proibidas para troca de vídeos/fotos (normalizadas)
+PALAVRAS_PROIBIDAS_TROCA_VIDEOS = [
+    "trocar video", "troca video", "manda video", "me manda video",
+    "me envie video", "video privado", "trocar conteudo", "trocar fotos",
+    "me manda fotos"
+]
+
 # Flask app
 app = Flask(__name__)
 
@@ -29,6 +37,25 @@ telegram_app = ApplicationBuilder().token(TOKEN).build()
 @app.route("/")
 def index():
     return "Bot ativo!"
+
+
+# --- Função para normalizar texto ---
+def normalizar_texto(texto: str) -> str:
+    texto = texto.lower()
+    substituicoes = {
+        '4': 'a',
+        '3': 'e',
+        '1': 'i',
+        '0': 'o',
+        '5': 's',
+        '7': 't',
+        '8': 'b'
+    }
+    for numero, letra in substituicoes.items():
+        texto = texto.replace(numero, letra)
+    texto = re.sub(r'[^a-z0-9\s]', '', texto)  # Remove caracteres especiais
+    texto = re.sub(r'\s+', ' ', texto).strip()  # Remove espaços extras
+    return texto
 
 
 # --- WEBHOOK ENDPOINT ---
@@ -68,6 +95,21 @@ async def filtrar_conteudo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "📵 Arquivos/imagens não são permitidos. Contato com a moderação.")
 
 
+async def banir_pedidos_troca_videos(update: Update,
+                                     context: ContextTypes.DEFAULT_TYPE):
+    if update.message and update.message.text:
+        texto = normalizar_texto(update.message.text)
+        for frase in PALAVRAS_PROIBIDAS_TROCA_VIDEOS:
+            if frase in texto:
+                await update.message.delete()
+                await update.message.reply_text(
+                    "🚫 Pedido de troca de vídeos/fotos não é permitido. Você será removido do grupo."
+                )
+                await context.bot.ban_chat_member(update.effective_chat.id,
+                                                  update.effective_user.id)
+                return
+
+
 async def boas_vindas(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.new_chat_members:
         for membro in update.message.new_chat_members:
@@ -78,6 +120,9 @@ async def boas_vindas(update: Update, context: ContextTypes.DEFAULT_TYPE):
 telegram_app.add_handler(MessageHandler(filters.ALL, bloquear_horario))
 telegram_app.add_handler(
     MessageHandler(filters.TEXT & ~filters.COMMAND, filtrar_conteudo))
+telegram_app.add_handler(
+    MessageHandler(filters.TEXT & ~filters.COMMAND,
+                   banir_pedidos_troca_videos))
 telegram_app.add_handler(
     MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, boas_vindas))
 
