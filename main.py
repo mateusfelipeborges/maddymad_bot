@@ -9,7 +9,7 @@ from telegram.ext import (ApplicationBuilder, ContextTypes, MessageHandler,
 # Variáveis de ambiente
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "corvinbotsecret")
-PORT = int(os.environ.get("PORT", 5000))  # necessário para o Render
+PORT = int(os.environ.get("PORT", 10000))  # Porta padrão do Render é 10000
 
 # Configurações
 PALAVRAS_CRIMINOSAS = [
@@ -23,6 +23,12 @@ app = Flask(__name__)
 
 # Telegram Application
 telegram_app = ApplicationBuilder().token(TOKEN).build()
+
+
+# Rota raiz só para teste (evita 404)
+@app.route("/")
+def index():
+    return "Bot ativo!"
 
 
 # --- WEBHOOK ENDPOINT ---
