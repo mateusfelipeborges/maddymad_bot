@@ -37,8 +37,8 @@ PALAVRAS_PROIBIDAS_TROCA_VIDEOS = [
 
 app = Flask(__name__)
 
-client = httpx.AsyncClient(limits=httpx.Limits(max_connections=20, max_keepalive_connections=10))
-request = HTTPXRequest(client=client)
+# 🔧 CORREÇÃO AQUI: criação do request sem client=
+request = HTTPXRequest()
 
 telegram_app = (
     ApplicationBuilder()
