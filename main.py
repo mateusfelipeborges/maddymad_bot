@@ -149,6 +149,16 @@ async def boas_vindas(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print(f"[ERRO no boas_vindas] {e}")
 
+# NOVO: boas-vindas para mensagens com novos membros
+async def boas_vindas_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message and update.message.new_chat_members:
+        for membro in update.message.new_chat_members:
+            nome = membro.first_name or "novo membro"
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=f"👋 Olá, {nome}! {MENSAGEM_BOAS_VINDAS}",
+            )
+
 # Handler simples para testar se o bot está respondendo
 async def responder_ola(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"[DEBUG] Mensagem recebida para responder_ola: {update.message.text}")
@@ -160,6 +170,9 @@ async def responder_ola(update: Update, context: ContextTypes.DEFAULT_TYPE):
 telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, filtrar_conteudo))
 telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, banir_pedidos_troca_videos))
 telegram_app.add_handler(ChatMemberHandler(boas_vindas, ChatMemberHandler.CHAT_MEMBER))
+
+# Novo handler para boas-vindas via mensagem com novos membros
+telegram_app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, boas_vindas_message))
 
 # Handler de teste para responder qualquer texto
 telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, responder_ola))
@@ -178,4 +191,5 @@ def start_bot():
 if __name__ == "__main__":
     threading.Thread(target=start_bot).start()
     app.run(host="0.0.0.0", port=PORT)
+
 
