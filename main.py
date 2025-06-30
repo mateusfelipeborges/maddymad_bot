@@ -9,6 +9,7 @@ from telegram.ext import (ApplicationBuilder, ContextTypes, MessageHandler,
 
 # Variáveis de ambiente
 TOKEN = os.getenv("TELEGRAM_TOKEN")
+print(f"[DEBUG] TOKEN carregado: {repr(TOKEN)}")  # <-- linha adicionada para debug
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "corvinbotsecret")
 PORT = int(os.environ.get("PORT", 10000))  # Porta padrão do Render é 10000
 
@@ -22,8 +23,7 @@ MENSAGEM_BOAS_VINDAS = "👋 Olá, seja bem-vinde ao grupo! Por favor, leia as r
 # Frases proibidas para troca de vídeos/fotos (normalizadas)
 PALAVRAS_PROIBIDAS_TROCA_VIDEOS = [
     "trocar video", "troca video", "manda video", "me manda video",
-    "me envie video", "video privado", "trocar conteudo", "trocar fotos",
-    "me manda fotos"
+    "me envie video", "video privado", "trocar conteudo"
 ]
 
 # Flask app
