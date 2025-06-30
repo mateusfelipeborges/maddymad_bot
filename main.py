@@ -63,7 +63,7 @@ def normalizar_texto(texto: str) -> str:
 
 @app.post(f"/{WEBHOOK_SECRET}")
 async def webhook() -> str:
-    payload = request.get_json(force=True)
+    payload = request.get_json()
     print("[DEBUG] Payload recebido do Telegram:", payload)
     update = Update.de_json(payload, telegram_app.bot)
     await telegram_app.process_update(update)
