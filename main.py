@@ -111,8 +111,13 @@ async def banir_pedidos_troca_videos(update: Update,
 
 
 async def boas_vindas(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    novo_membro = update.chat_member.new_chat_member
-    if novo_membro.status == "member":
+    old_status = update.chat_member.old_chat_member.status
+    new_status = update.chat_member.new_chat_member.status
+    # DEBUG
+    print(
+        f"[DEBUG] ChatMember update: old_status={old_status}, new_status={new_status}"
+    )
+    if old_status in ['left', 'kicked'] and new_status == 'member':
         await context.bot.send_message(chat_id=update.chat_member.chat.id,
                                        text=MENSAGEM_BOAS_VINDAS)
 
