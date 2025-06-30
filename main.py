@@ -2,7 +2,8 @@ import os
 import datetime
 import threading
 import re
-import asyncio  # <- adicionado para permitir sleep e delete
+import asyncio
+import httpx
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import (
@@ -18,39 +19,32 @@ from telegram.request import HTTPXRequest
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 print(f"[DEBUG] TOKEN carregado: {repr(TOKEN)}")
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "corvinbotsecret")
-PORT = int(os.environ.get("PORT", 10000))  # Porta padrão do Render é 10000
+PORT = int(os.environ.get("PORT", 10000))
 
 # Configurações
 PALAVRAS_CRIMINOSAS = [
-    "cp",
-    "zoofilia",
-    "gore",
-    "snuff",
-    "terrorismo",
-    "porn infantil",
+    "cp", "zoofilia", "gore", "snuff", "terrorismo", "porn infantil",
 ]
 HORARIO_SILENCIO = (23, 7)
 MENSAGEM_BOAS_VINDAS = (
     "👋 Olá, seja bem-vinde ao grupo! Por favor, leia as regras fixadas. Respeito é fundamental. "
     "PROIBIDO conteúdo de CP, zoofilia, gore, snuff, terrorismo e porn infantil. BANIMENTO IMEDIATO! "
 )
-
 PALAVRAS_PROIBIDAS_TROCA_VIDEOS = [
-    "trocar video",
-    "troca video",
-    "manda video",
-    "me manda video",
-    "me envie video",
-    "video privado",
-    "trocar conteudo",
+    "trocar video", "troca video", "manda video", "me manda video",
+    "me envie video", "video privado", "trocar conteudo",
 ]
 
 app = Flask(__name__)
 
+client = httpx.AsyncClient(limits=httpx.Limits(max_connections=20, max_keepalive_connections=10))
+request = HTTPXRequest(client=client)
+
 telegram_app = (
     ApplicationBuilder()
     .token(TOKEN)
-    .concurrent_updates(5)
+    .request(request)
+    .concurrent_updates(10)
     .build()
 )
 
@@ -60,15 +54,7 @@ def index():
 
 def normalizar_texto(texto: str) -> str:
     texto = texto.lower()
-    substituicoes = {
-        "4": "a",
-        "3": "e",
-        "1": "i",
-        "0": "o",
-        "5": "s",
-        "7": "t",
-        "8": "b",
-    }
+    substituicoes = {"4": "a", "3": "e", "1": "i", "0": "o", "5": "s", "7": "t", "8": "b"}
     for numero, letra in substituicoes.items():
         texto = texto.replace(numero, letra)
     texto = re.sub(r"[^a-z0-9\s]", "", texto)
@@ -83,6 +69,13 @@ async def webhook() -> str:
     await telegram_app.process_update(update)
     print("[DEBUG] Update processado com sucesso")
     return "ok"
+
+async def apagar_mensagem_apos_delay(context, chat_id, message_id, delay=10):
+    await asyncio.sleep(delay)
+    try:
+        await context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+    except Exception as e:
+        print(f"[ERRO] Falha ao apagar mensagem: {e}")
 
 async def bloquear_horario(update: Update, context: ContextTypes.DEFAULT_TYPE):
     agora = datetime.datetime.now().time()
@@ -107,17 +100,9 @@ async def filtrar_conteudo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if palavra in texto:
                 print(f"[ALERTA] Palavra proibida detectada: {palavra}")
                 await update.message.delete()
-                msg = await update.message.reply_text(
-                    "🚫 Conteúdo proibido. Usuário será removido."
-                )
-                await context.bot.ban_chat_member(
-                    update.effective_chat.id, update.effective_user.id
-                )
-                await asyncio.sleep(10)
-                try:
-                    await context.bot.delete_message(chat_id=msg.chat_id, message_id=msg.message_id)
-                except Exception as e:
-                    print(f"[ERRO] Falha ao apagar mensagem de banimento: {e}")
+                msg = await update.message.reply_text("🚫 Conteúdo proibido. Usuário será removido.")
+                await context.bot.ban_chat_member(update.effective_chat.id, update.effective_user.id)
+                asyncio.create_task(apagar_mensagem_apos_delay(context, msg.chat_id, msg.message_id))
                 return
 
 async def banir_pedidos_troca_videos(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -131,14 +116,8 @@ async def banir_pedidos_troca_videos(update: Update, context: ContextTypes.DEFAU
                 msg = await update.message.reply_text(
                     "🚫 Pedido de troca de vídeos/fotos não é permitido. Você será removido do grupo."
                 )
-                await context.bot.ban_chat_member(
-                    update.effective_chat.id, update.effective_user.id
-                )
-                await asyncio.sleep(10)
-                try:
-                    await context.bot.delete_message(chat_id=msg.chat_id, message_id=msg.message_id)
-                except Exception as e:
-                    print(f"[ERRO] Falha ao apagar mensagem de banimento: {e}")
+                await context.bot.ban_chat_member(update.effective_chat.id, update.effective_user.id)
+                asyncio.create_task(apagar_mensagem_apos_delay(context, msg.chat_id, msg.message_id))
                 return
 
 async def boas_vindas(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -150,13 +129,9 @@ async def boas_vindas(update: Update, context: ContextTypes.DEFAULT_TYPE):
             nome = update.chat_member.new_chat_member.user.first_name
             msg = await context.bot.send_message(
                 chat_id=update.chat_member.chat.id,
-                text=f"👋 Olá, {nome}! {MENSAGEM_BOAS_VINDAS}",
+                text=f"👋 Olá, {nome}! {MENSAGEM_BOAS_VINDAS}"
             )
-            await asyncio.sleep(10)
-            try:
-                await context.bot.delete_message(chat_id=msg.chat_id, message_id=msg.message_id)
-            except Exception as e:
-                print(f"[ERRO] Falha ao apagar mensagem de boas-vindas: {e}")
+            asyncio.create_task(apagar_mensagem_apos_delay(context, msg.chat_id, msg.message_id))
     except Exception as e:
         print(f"[ERRO no boas_vindas] {e}")
 
@@ -166,15 +141,10 @@ async def boas_vindas_message(update: Update, context: ContextTypes.DEFAULT_TYPE
             nome = membro.first_name or "novo membro"
             msg = await context.bot.send_message(
                 chat_id=update.effective_chat.id,
-                text=f"👋 Olá, {nome}! {MENSAGEM_BOAS_VINDAS}",
+                text=f"👋 Olá, {nome}! {MENSAGEM_BOAS_VINDAS}"
             )
-            await asyncio.sleep(10)
-            try:
-                await context.bot.delete_message(chat_id=msg.chat_id, message_id=msg.message_id)
-            except Exception as e:
-                print(f"[ERRO] Falha ao apagar mensagem de boas-vindas: {e}")
+            asyncio.create_task(apagar_mensagem_apos_delay(context, msg.chat_id, msg.message_id))
 
-# Handlers
 telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, filtrar_conteudo))
 telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, banir_pedidos_troca_videos))
 telegram_app.add_handler(ChatMemberHandler(boas_vindas, ChatMemberHandler.CHAT_MEMBER))
