@@ -42,7 +42,7 @@ PALAVRAS_PROIBIDAS_TROCA_VIDEOS = [
 app = Flask(__name__)
 
 # ✅ Correção aqui: renomeando para não sobrescrever o `request` do Flask
-telegram_request = HTTPXRequest()
+telegram_request = HTTPXRequest(pool_size=20, read_timeout=10.0, write_timeout=10.0)
 
 telegram_app = (
     ApplicationBuilder()
